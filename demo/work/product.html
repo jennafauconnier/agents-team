@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Produit</title>
+<style>
+  body{font:16px system-ui,sans-serif;margin:0;padding:0;background:#fafafa}
+  header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#fff;border-bottom:1px solid #eee}
+  header a{color:#333;text-decoration:none;font-weight:600}
+  main{max-width:640px;margin:24px auto;padding:0 16px}
+  .card{background:#fff;border:1px solid #eee;border-radius:8px;padding:20px;display:flex;flex-direction:column;gap:12px}
+  h1{margin:0;font-size:22px}
+  .price{font-size:20px;font-weight:700;color:#0b7}
+  .stock{font-size:14px;color:#666}
+  button{padding:10px 16px;border:none;border-radius:6px;background:#0b7;color:#fff;font:inherit;cursor:pointer}
+  button:disabled{background:#ccc;cursor:not-allowed}
+  .unavail{color:#c33;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <a href="product.html">Boutique</a>
+  <a href="cart.html">Panier (<span id="cart-count">0</span>)</a>
+</header>
+<main>
+  <div class="card" id="product">Chargement…</div>
+</main>
+<script src="app.js"></script>
+<script>
+(async () => {
+  const sku = new URLSearchParams(location.search).get('sku') || 'A1';
+  const catalog = await getCatalog();
+  const p = catalog[sku];
+  const root = document.getElementById('product');
+  if (!p) { root.textContent = 'Produit introuvable'; return; }
+
+  const available = p.active && p.stock > 0;
+  root.innerHTML = `
+    <h1>${p.name}</h1>
+    <div class="price">${p.price.toFixed(2)} €</div>
+    <div class="stock">${available ? 'Stock : ' + p.stock : '<span class="unavail">Indisponible</span>'}</div>
+  `;
+
+  const btn = document.createElement('button');
+  btn.textContent = available ? 'Ajouter au panier' : 'Indisponible';
+  if (!available) {
+    btn.disabled = true;
+  } else {
+    btn.addEventListener('click', () => addToCart(sku, 1));
+  }
+  root.appendChild(btn);
+})();
+</script>
+</body>
+</html>

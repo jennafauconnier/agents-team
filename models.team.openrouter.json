@@ -1,0 +1,5 @@
+[
+  {"id": "deepseek/deepseek-v4.1-flash-1017", "in": 0.036, "out": 0.5},
+  {"id": "xiaomi/mimo-v2.6-pro", "in": 0.435, "out": 0.87},
+  {"id": "tencent/hy4", "in": 0.417, "out": 1.25}
+]

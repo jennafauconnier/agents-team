@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Panier</title>
+<style>
+  body{font:16px system-ui,sans-serif;margin:0;padding:0;background:#fafafa}
+  header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#fff;border-bottom:1px solid #eee}
+  header a{color:#333;text-decoration:none;font-weight:600}
+  main{max-width:760px;margin:24px auto;padding:0 16px}
+  .empty{padding:40px;text-align:center;color:#888;background:#fff;border:1px solid #eee;border-radius:8px}
+  .lines{background:#fff;border:1px solid #eee;border-radius:8px;overflow:hidden}
+  .line{display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid #f0f0f0}
+  .line:last-child{border-bottom:none}
+  .name{font-weight:600}
+  .price{color:#666;font-size:14px}
+  .badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;margin-top:4px}
+  .badge.warn{background:#fff3cd;color:#856404}
+  .badge.err{background:#f8d7da;color:#721c24}
+  input[type=number]{width:60px;padding:6px;border:1px solid #ddd;border-radius:4px;font:inherit}
+  button{padding:8px 12px;border:none;border-radius:6px;background:#eee;color:#333;font:inherit;cursor:pointer}
+  button.danger{background:#f8d7da;color:#721c24}
+  .totals{margin-top:16px;padding:16px;background:#fff;border:1px solid #eee;border-radius:8px;display:flex;justify-content:space-between;font-size:18px;font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <a href="product.html">Boutique</a>
+  <a href="cart.html">Panier (<span id="cart-count">0</span>)</a>
+</header>
+<main id="root">Chargement…</main>
+<script src="app.js"></script>
+<script>
+function render(cart, warnings) {
+  const root = document.getElementById('root');
+  const wz = {};
+  for (const w of (warnings || [])) (wz[w.sku] ||= []).push(w);
+
+  if (!cart || !cart.lines || cart.lines.length === 0) {
+    root.innerHTML = '<div class="empty">Votre panier est vide.</div>';
+    updateCount(0);
+    return;
+  }
+
+  const rows = cart.lines.map(l => {
+    const ws = wz[l.sku] || [];
+    const low = ws.find(w => w.code === 'STOCK_LOW');
+    const badges = ws.map(w => {
+      const cls = w.code === 'UNAVAILABLE' ? 'err' : 'warn';
+      return `<div class="badge ${cls}">${w.msg}</div>`;
+    }).join('');
+
+    // STOCK_LOW → max = stock ; UNAVAILABLE → qty figée, mais Supprimer reste actif
+    const maxAttr = low && typeof low.max === 'number' ? `max="${low.max}"` : '';
+    const disabled = l.status === 'UNAVAILABLE' ? 'disabled' : '';
+
+    return `
+      <div class="line" data-sku="${l.sku}">
+        <div>
+          <div class="name">${l.name}</div>
+          <div class="price">${l.price.toFixed(2)} € / unité</div>
+          ${badges}
+        </div>
+        <input type="number" min="1" ${maxAttr} ${disabled} value="${l.qty}" data-role="qty">
+        <div class="price">${l.line_total.toFixed(2)} €</div>
+        <button class="danger" data-role="del">Supprimer</button>
+      </div>`;
+  }).join('');
+
+  root.innerHTML = `
+    <div class="lines">${rows}</div>
+    <div class="totals">
+      <span>Total (${cart.count} art.)</span>
+      <span>${cart.subtotal.toFixed(2)} €</span>
+    </div>`;
+
+  updateCount(cart.count);
+
+  root.querySelectorAll('.line').forEach(el => {
+    const sku = el.dataset.sku;
+    el.querySelector('[data-role=qty]')?.addEventListener('change', async e => {
+      const input = e.target;
+      const max = input.max ? Number(input.max) : Infinity;
+      let qty = Math.max(1, parseInt(input.value, 10) || 1);
+      if (qty > max) { qty = max; input.value = max; }
+      await doUpdate(sku, qty);
+    });
+    el.querySelector('[data-role=del]')?.addEventListener('click', () => doRemove(sku));
+  });
+}
+
+async function load() {
+  const res = await syncCount();           // GET /cart?state=... + persist complet
+  render(res.cart, res.warnings || []);
+}
+
+async function doUpdate(sku, qty) {
+  // ✅ state contient encore les lignes UNAVAILABLE / STOCK_LOW
+  const res = await API.post('/cart/update', {
+    state: stateToCart(getState()),
+    sku,
+    qty
+  });
+  persistFromCart(res.cart);
+  updateCount(res.cart?.count ?? 0);
+  render(res.cart, res.warnings || []);
+}
+
+async function doRemove(sku) {
+  // ✅ la ligne indisponible est toujours présente dans le state envoyé
+  const res = await API.post('/cart/remove', {
+    state: stateToCart(getState()),
+    sku
+  });
+  persistFromCart(res.cart);
+  updateCount(res.cart?.count ?? 0);
+  render(res.cart, res.warnings || []);
+}
+
+load().catch(() => {
+  document.getElementById('root').innerHTML = '<div class="empty">Erreur de chargement.</div>';
+});
+</script>
+</body>
+</html>

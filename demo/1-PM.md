@@ -1,0 +1,11 @@
+- Objectif : permettre aux clients d’ajouter, consulter et modifier des articles avant de poursuivre leur achat.
+- Utilisateurs : visiteurs et clients connectés sur la boutique en ligne.
+- Périmètre : ajout/suppression d’articles, modification des quantités, calcul du sous-total, persistance du panier.
+- Périmètre : affichage du nombre d’articles et accès au panier depuis toutes les pages.
+- Périmètre : gestion des articles indisponibles ou supprimés avec message clair.
+- Hors-périmètre : paiement, livraison, création de compte, promotions/coupons, wishlist.
+- Risques : bugs de persistance du panier entre sessions ou appareils.
+- Risques : incohérence des stocks/prix au moment du checkout.
+- Risques : impact performance si le panier est stocké côté serveur.
+- Risques : complexité si la boutique existante n’a pas d’API panier.
+- Décision PM : prioriser un MVP panier simple, sans coupons ni compte obligatoire, à valider rapidement.
